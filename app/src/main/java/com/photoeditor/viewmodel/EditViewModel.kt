@@ -66,6 +66,7 @@ class EditViewModel(
 
     init {
         loadImage()
+        _selectedAdjustment.value = AdjustmentType.EXPOSURE
     }
 
     private fun loadImage() {
@@ -110,7 +111,15 @@ class EditViewModel(
 
     fun selectTab(tab: EditTab) {
         _selectedTab.value = tab
-        if (tab != EditTab.ADJUST) _selectedAdjustment.value = null
+        when (tab) {
+            EditTab.ADJUST -> {
+                // Auto-select first adjustment if none selected
+                if (_selectedAdjustment.value == null) {
+                    _selectedAdjustment.value = AdjustmentType.EXPOSURE
+                }
+            }
+            else -> _selectedAdjustment.value = null
+        }
     }
 
     fun selectFilter(filterType: FilterType) {

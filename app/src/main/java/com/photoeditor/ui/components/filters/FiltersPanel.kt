@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -32,10 +33,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.photoeditor.data.model.EditState
 import com.photoeditor.data.model.FilterType
-import com.photoeditor.ui.components.adjust.HorizontalValueSlider
 import com.photoeditor.ui.theme.SubtleGray
 import com.photoeditor.ui.theme.TextGray
 import com.photoeditor.ui.theme.iOSYellow
+import kotlin.math.roundToInt
 
 @Composable
 fun FiltersPanel(
@@ -46,28 +47,32 @@ fun FiltersPanel(
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
-        // Intensity slider (shown when a non-original filter is selected)
-        if (editState.selectedFilter != FilterType.ORIGINAL) {
-            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+        // Filter name + intensity label (centered, above the dial)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(28.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = editState.selectedFilter.displayName.uppercase(),
+                color = if (editState.selectedFilter != FilterType.ORIGINAL) Color.White else SubtleGray,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 0.8.sp
+            )
+            if (editState.selectedFilter != FilterType.ORIGINAL) {
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Intensity: ${editState.filterIntensity.toInt()}%",
-                    color = Color.White,
-                    fontSize = 13.sp,
-                    modifier = Modifier.align(Alignment.End)
-                )
-                HorizontalValueSlider(
-                    value = editState.filterIntensity,
-                    onValueChange = onIntensityChanged,
-                    valueRange = 0f..100f,
-                    modifier = Modifier.fillMaxWidth()
+                    text = "${editState.filterIntensity.roundToInt()}%",
+                    color = TextGray,
+                    fontSize = 11.sp
                 )
             }
-        } else {
-            Spacer(modifier = Modifier.height(48.dp))
         }
 
-        Spacer(modifier = Modifier.height(4.dp))
-
+        // Filter thumbnail carousel
         LazyRow(
             contentPadding = PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -83,7 +88,7 @@ fun FiltersPanel(
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(4.dp))
     }
 }
 
@@ -97,12 +102,12 @@ private fun FilterThumbnail(
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
-            .width(72.dp)
+            .width(70.dp)
             .clickable { onClick() }
     ) {
         Box(
             modifier = Modifier
-                .size(68.dp)
+                .size(66.dp)
                 .clip(RoundedCornerShape(10.dp))
                 .border(
                     width = if (isSelected) 2.5.dp else 0.dp,
@@ -117,14 +122,14 @@ private fun FilterThumbnail(
                     bitmap = previewBitmap.asImageBitmap(),
                     contentDescription = filterType.displayName,
                     modifier = Modifier
-                        .size(68.dp)
-                        .clip(RoundedCornerShape(if (isSelected) 8.dp else 10.dp)),
+                        .size(66.dp)
+                        .clip(RoundedCornerShape(if (isSelected) 7.5.dp else 10.dp)),
                     contentScale = ContentScale.Crop
                 )
             } else {
                 Box(
                     modifier = Modifier
-                        .size(68.dp)
+                        .size(66.dp)
                         .background(Color(0xFF2C2C2E), RoundedCornerShape(10.dp))
                 )
             }

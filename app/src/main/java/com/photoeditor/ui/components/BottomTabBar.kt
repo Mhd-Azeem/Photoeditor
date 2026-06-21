@@ -1,8 +1,7 @@
 package com.photoeditor.ui.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -10,12 +9,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Crop
-import androidx.compose.material.icons.filled.FilterVintage
-import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.outlined.FilterVintage
+import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,72 +26,78 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.photoeditor.data.model.EditTab
 import com.photoeditor.ui.theme.SubtleGray
-import com.photoeditor.ui.theme.TextGray
 import com.photoeditor.ui.theme.iOSYellow
 
 @Composable
-fun EditTabBar(
+fun EditBottomBar(
     selectedTab: EditTab,
     onTabSelected: (EditTab) -> Unit,
+    onCancel: () -> Unit,
+    onDone: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(modifier = modifier.background(Color.Black)) {
-        HorizontalDivider(color = Color(0xFF2C2C2E), thickness = 0.5.dp)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(54.dp)
-                .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            TabItem(
-                icon = Icons.Default.Tune,
-                label = "Adjust",
-                selected = selectedTab == EditTab.ADJUST,
+    HorizontalDivider(color = Color(0xFF2C2C2E), thickness = 0.5.dp)
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(58.dp)
+            .padding(horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        // Cancel button
+        TextButton(onClick = onCancel) {
+            Text(
+                text = "Cancel",
+                color = iOSYellow,
+                fontSize = 17.sp,
+                fontWeight = FontWeight.Normal
+            )
+        }
+
+        // Center: 3 icon tabs (no text labels — exact iOS style)
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            TabIconButton(
+                icon = Icons.Outlined.WbSunny,
+                isSelected = selectedTab == EditTab.ADJUST,
                 onClick = { onTabSelected(EditTab.ADJUST) }
             )
-            TabItem(
-                icon = Icons.Default.FilterVintage,
-                label = "Filters",
-                selected = selectedTab == EditTab.FILTERS,
+            TabIconButton(
+                icon = Icons.Outlined.FilterVintage,
+                isSelected = selectedTab == EditTab.FILTERS,
                 onClick = { onTabSelected(EditTab.FILTERS) }
             )
-            TabItem(
+            TabIconButton(
                 icon = Icons.Default.Crop,
-                label = "Crop",
-                selected = selectedTab == EditTab.CROP,
+                isSelected = selectedTab == EditTab.CROP,
                 onClick = { onTabSelected(EditTab.CROP) }
+            )
+        }
+
+        // Done button
+        TextButton(onClick = onDone) {
+            Text(
+                text = "Done",
+                color = iOSYellow,
+                fontSize = 17.sp,
+                fontWeight = FontWeight.SemiBold
             )
         }
     }
 }
 
 @Composable
-private fun TabItem(
+private fun TabIconButton(
     icon: ImageVector,
-    label: String,
-    selected: Boolean,
+    isSelected: Boolean,
     onClick: () -> Unit
 ) {
-    val tint = if (selected) iOSYellow else SubtleGray
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.padding(horizontal = 24.dp)
-    ) {
-        IconButton(onClick = onClick, modifier = Modifier.size(44.dp)) {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                tint = tint,
-                modifier = Modifier.size(24.dp)
-            )
-        }
-        Text(
-            text = label,
-            color = tint,
-            fontSize = 10.sp,
-            fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal
+    IconButton(onClick = onClick, modifier = Modifier.size(48.dp)) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = if (isSelected) iOSYellow else SubtleGray,
+            modifier = Modifier.size(26.dp)
         )
     }
 }

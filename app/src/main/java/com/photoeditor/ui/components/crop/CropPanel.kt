@@ -33,11 +33,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.photoeditor.data.model.AspectRatio
 import com.photoeditor.data.model.CropState
-import com.photoeditor.ui.components.adjust.HorizontalValueSlider
-import com.photoeditor.ui.theme.LightGray
 import com.photoeditor.ui.theme.SubtleGray
 import com.photoeditor.ui.theme.TextGray
+import com.photoeditor.ui.theme.White
 import com.photoeditor.ui.theme.iOSYellow
+import kotlin.math.roundToInt
 
 @Composable
 fun CropPanel(
@@ -49,79 +49,72 @@ fun CropPanel(
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
-        // Rotation controls
+        // Rotation label (above the dial)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+                .height(28.dp),
+            horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = { onRotationChanged(cropState.rotation - 90f) }) {
-                Icon(Icons.Default.RotateLeft, contentDescription = "Rotate Left", tint = Color.White)
-            }
-
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = "STRAIGHTEN",
+                color = TextGray,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium,
+                letterSpacing = 0.8.sp
+            )
+            val deg = cropState.rotation.roundToInt()
+            if (deg != 0) {
                 Text(
-                    text = "Straighten",
-                    color = TextGray,
-                    fontSize = 12.sp
+                    text = "  ${if (deg > 0) "+$deg" else "$deg"}°",
+                    color = White,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold
                 )
-                Text(
-                    text = "${cropState.rotation.toInt()}°",
-                    color = Color.White,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-
-            IconButton(onClick = { onRotationChanged(cropState.rotation + 90f) }) {
-                Icon(Icons.Default.RotateRight, contentDescription = "Rotate Right", tint = Color.White)
             }
         }
 
-        // Straighten slider
-        HorizontalValueSlider(
-            value = cropState.rotation % 360f,
-            onValueChange = { onRotationChanged(it) },
-            valueRange = -45f..45f,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Aspect ratio chips
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth()
+        // Aspect ratio chips + rotate buttons in one row
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            items(AspectRatio.entries) { ratio ->
-                AspectRatioChip(
-                    ratio = ratio,
-                    isSelected = cropState.aspectRatio == ratio,
-                    onClick = { onAspectRatioChanged(ratio) }
-                )
+            IconButton(
+                onClick = { onRotationChanged(cropState.rotation - 90f) },
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(Icons.Default.RotateLeft, contentDescription = "Rotate Left",
+                    tint = SubtleGray, modifier = Modifier.size(22.dp))
+            }
+
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                items(AspectRatio.entries) { ratio ->
+                    AspectRatioChip(
+                        ratio = ratio,
+                        isSelected = cropState.aspectRatio == ratio,
+                        onClick = { onAspectRatioChanged(ratio) }
+                    )
+                }
+            }
+
+            IconButton(
+                onClick = { onRotationChanged(cropState.rotation + 90f) },
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(Icons.Default.RotateRight, contentDescription = "Rotate Right",
+                    tint = SubtleGray, modifier = Modifier.size(22.dp))
             }
         }
 
         Spacer(modifier = Modifier.height(4.dp))
-
-        // Reset button
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.End
-        ) {
-            TextButton(onClick = onReset) {
-                Text(
-                    text = "Reset",
-                    color = iOSYellow,
-                    fontSize = 15.sp
-                )
-            }
-        }
     }
 }
 
@@ -133,24 +126,23 @@ private fun AspectRatioChip(
 ) {
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(
-                if (isSelected) iOSYellow.copy(alpha = 0.15f) else Color(0xFF2C2C2E),
-                RoundedCornerShape(20.dp)
+                if (isSelected) Color(0xFF2C2C2E) else Color.Transparent,
+                RoundedCornerShape(16.dp)
             )
             .border(
                 width = if (isSelected) 1.dp else 0.dp,
                 color = if (isSelected) iOSYellow else Color.Transparent,
-                shape = RoundedCornerShape(20.dp)
+                shape = RoundedCornerShape(16.dp)
             )
             .clickable { onClick() }
-            .padding(horizontal = 14.dp, vertical = 6.dp),
-        contentAlignment = Alignment.Center
+            .padding(horizontal = 10.dp, vertical = 5.dp)
     ) {
         Text(
             text = ratio.label,
             color = if (isSelected) iOSYellow else SubtleGray,
-            fontSize = 13.sp,
+            fontSize = 12.sp,
             fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal
         )
     }

@@ -1,101 +1,59 @@
 package com.photoeditor.ui.components
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Undo
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.photoeditor.ui.theme.DarkGray
-import com.photoeditor.ui.theme.TextGray
+import com.photoeditor.data.model.EditTab
+import com.photoeditor.ui.theme.SubtleGray
 import com.photoeditor.ui.theme.White
-import com.photoeditor.ui.theme.iOSYellow
 
 @Composable
 fun EditTopBar(
-    isModified: Boolean,
-    onCancel: () -> Unit,
-    onDone: () -> Unit,
-    onRevert: () -> Unit,
-    onShare: () -> Unit,
+    selectedTab: EditTab,
+    onMore: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var showMenu by remember { mutableStateOf(false) }
-
-    Row(
+    Box(
         modifier = modifier
-            .height(52.dp)
-            .padding(horizontal = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+            .fillMaxWidth()
+            .height(44.dp)
+            .padding(horizontal = 4.dp),
+        contentAlignment = Alignment.Center
     ) {
-        TextButton(onClick = onCancel) {
-            Text(
-                text = "Cancel",
-                color = iOSYellow,
-                fontSize = 17.sp,
-                fontWeight = FontWeight.Normal
-            )
-        }
+        // Centered section title — all caps, letter-spaced like iOS
+        Text(
+            text = when (selectedTab) {
+                EditTab.ADJUST  -> "ADJUST"
+                EditTab.FILTERS -> "FILTERS"
+                EditTab.CROP    -> "CROP"
+            },
+            color = White,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = 1.sp,
+            textAlign = TextAlign.Center
+        )
 
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onShare) {
+        // "..." overflow menu on right
+        Box(modifier = Modifier.align(Alignment.CenterEnd)) {
+            IconButton(onClick = onMore) {
                 Icon(
-                    imageVector = Icons.Default.Share,
-                    contentDescription = "Share",
-                    tint = iOSYellow
-                )
-            }
-
-            IconButton(onClick = { showMenu = true }) {
-                Icon(
-                    imageVector = Icons.Default.MoreVert,
-                    contentDescription = "More",
-                    tint = White
-                )
-                DropdownMenu(
-                    expanded = showMenu,
-                    onDismissRequest = { showMenu = false },
-                    containerColor = DarkGray
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("Revert to Original", color = if (isModified) White else TextGray) },
-                        onClick = {
-                            showMenu = false
-                            if (isModified) onRevert()
-                        },
-                        leadingIcon = {
-                            Icon(Icons.Default.Undo, contentDescription = null, tint = if (isModified) White else TextGray)
-                        }
-                    )
-                }
-            }
-
-            TextButton(onClick = onDone) {
-                Text(
-                    text = "Done",
-                    color = iOSYellow,
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.SemiBold
+                    imageVector = Icons.Default.MoreHoriz,
+                    contentDescription = "More options",
+                    tint = SubtleGray
                 )
             }
         }
