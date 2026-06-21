@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Photo Editor</string>
+    <string name="cancel">Cancel</string>
+<string name="done">Done</string>
+    <string name="revert">Revert to Original</string>
+    <string name="auto_enhance">Auto Enhance</string>
+    <string name="adjust">Adjust</string>
+    <string name="filters">Filters</string>
+    <string name="crop">Crop</string>
+</resources>

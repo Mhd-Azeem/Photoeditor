@@ -1,0 +1,3 @@
+-keep class com.photoeditor.** { *; }
+-keepattributes *Annotation*
+-dontwarn java.lang.invoke.**
