@@ -75,7 +75,7 @@ fun HomeScreen(onImageSelected: (Uri) -> Unit) {
             Spacer(modifier = Modifier.height(32.dp))
 
             Text(
-                text = "Photo Editor",
+                text = "Azeem's Editor",
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
                 color = White

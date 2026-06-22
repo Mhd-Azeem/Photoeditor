@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Photo Editor</string>
+    <string name="app_name">Azeem\'s Editor</string>
     <string name="cancel">Cancel</string>
 <string name="done">Done</string>
     <string name="revert">Revert to Original</string>
