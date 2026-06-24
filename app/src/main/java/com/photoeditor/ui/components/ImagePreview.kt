@@ -1,10 +1,14 @@
 package com.photoeditor.ui.components
 
 import android.graphics.Bitmap
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -17,7 +21,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.foundation.Image
+import androidx.compose.ui.unit.dp
 import com.photoeditor.data.model.CropState
 import com.photoeditor.ui.components.crop.CropOverlay
 
@@ -30,7 +34,7 @@ fun ImagePreview(
     modifier: Modifier = Modifier
 ) {
     var scale by remember { mutableFloatStateOf(1f) }
-    var offset by remember { mutableFloatStateOf(0f) }
+    var offsetX by remember { mutableFloatStateOf(0f) }
     var offsetY by remember { mutableFloatStateOf(0f) }
 
     Box(
@@ -39,8 +43,33 @@ fun ImagePreview(
     ) {
         if (bitmap != null) {
             if (showCropOverlay && cropState != null && onCropChanged != null) {
-                // Crop mode — show without zoom/pan, crop overlay handles gestures
-                Box(modifier = Modifier.fillMaxSize()) {
+                // Compute the actual image display rect so the crop overlay maps correctly
+                // to image pixels (not the black-bar letterbox area).
+                BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                    val containerW = maxWidth.value
+                    val containerH = maxHeight.value
+                    val imageAspect = bitmap.width.toFloat() / bitmap.height.toFloat()
+                    val containerAspect = containerW / containerH
+
+                    val displayW: Float
+                    val displayH: Float
+                    val imgLeft: Float
+                    val imgTop: Float
+
+                    if (imageAspect > containerAspect) {
+                        // Image is wider than container — fits by width, letterboxed top/bottom
+                        displayW = containerW
+                        displayH = containerW / imageAspect
+                        imgLeft = 0f
+                        imgTop = (containerH - displayH) / 2f
+                    } else {
+                        // Image is taller than container — fits by height, pillarboxed left/right
+                        displayH = containerH
+                        displayW = containerH * imageAspect
+                        imgLeft = (containerW - displayW) / 2f
+                        imgTop = 0f
+                    }
+
                     Image(
                         bitmap = bitmap.asImageBitmap(),
                         contentDescription = "Photo",
@@ -50,7 +79,9 @@ fun ImagePreview(
                     CropOverlay(
                         cropState = cropState,
                         onCropChanged = onCropChanged,
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier
+                            .offset(x = imgLeft.dp, y = imgTop.dp)
+                            .size(displayW.dp, displayH.dp)
                     )
                 }
             } else {
@@ -64,10 +95,10 @@ fun ImagePreview(
                             detectTransformGestures { _, pan, zoom, _ ->
                                 scale = (scale * zoom).coerceIn(1f, 5f)
                                 if (scale > 1f) {
-                                    offset = (offset + pan.x).coerceIn(-500f, 500f)
+                                    offsetX = (offsetX + pan.x).coerceIn(-500f, 500f)
                                     offsetY = (offsetY + pan.y).coerceIn(-500f, 500f)
                                 } else {
-                                    offset = 0f
+                                    offsetX = 0f
                                     offsetY = 0f
                                 }
                             }
@@ -75,7 +106,7 @@ fun ImagePreview(
                         .graphicsLayer {
                             scaleX = scale
                             scaleY = scale
-                            translationX = offset
+                            translationX = offsetX
                             translationY = offsetY
                         },
                     contentScale = ContentScale.Fit

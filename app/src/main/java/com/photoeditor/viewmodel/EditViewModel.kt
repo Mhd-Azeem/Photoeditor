@@ -60,7 +60,14 @@ class EditViewModel(
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
+    private val _canUndo = MutableStateFlow(false)
+    val canUndo: StateFlow<Boolean> = _canUndo.asStateFlow()
+
+    private val _canRedo = MutableStateFlow(false)
+    val canRedo: StateFlow<Boolean> = _canRedo.asStateFlow()
+
     private var processingJob: Job? = null
+    private var historyJob: Job? = null
     private val editHistory = mutableListOf<EditState>()
     private var historyIndex = -1
 
@@ -98,11 +105,13 @@ class EditViewModel(
     fun updateAdjustment(type: AdjustmentType, value: Float) {
         _editState.update { it.withAdjustment(type, value) }
         scheduleProcessing()
+        scheduleHistoryPush()
     }
 
     fun resetAdjustment(type: AdjustmentType) {
         _editState.update { it.withAdjustment(type, 0f) }
         scheduleProcessing()
+        scheduleHistoryPush()
     }
 
     fun selectAdjustment(type: AdjustmentType?) {
@@ -113,7 +122,6 @@ class EditViewModel(
         _selectedTab.value = tab
         when (tab) {
             EditTab.ADJUST -> {
-                // Auto-select first adjustment if none selected
                 if (_selectedAdjustment.value == null) {
                     _selectedAdjustment.value = AdjustmentType.EXPOSURE
                 }
@@ -125,11 +133,13 @@ class EditViewModel(
     fun selectFilter(filterType: FilterType) {
         _editState.update { it.copy(selectedFilter = filterType) }
         scheduleProcessing()
+        scheduleHistoryPush()
     }
 
     fun updateFilterIntensity(intensity: Float) {
         _editState.update { it.copy(filterIntensity = intensity) }
         scheduleProcessing()
+        scheduleHistoryPush()
     }
 
     fun updateCrop(crop: CropState) {
@@ -142,10 +152,32 @@ class EditViewModel(
 
     fun updateRotation(rotation: Float) {
         _editState.update { it.copy(cropState = it.cropState.copy(rotation = rotation)) }
+        scheduleHistoryPush()
     }
 
     fun resetCrop() {
         _editState.update { it.copy(cropState = CropState()) }
+        scheduleHistoryPush()
+    }
+
+    fun undo() {
+        if (historyIndex > 0) {
+            historyJob?.cancel()
+            historyIndex--
+            _editState.value = editHistory[historyIndex]
+            updateCanUndoRedo()
+            scheduleProcessing(immediate = true)
+        }
+    }
+
+    fun redo() {
+        if (historyIndex < editHistory.size - 1) {
+            historyJob?.cancel()
+            historyIndex++
+            _editState.value = editHistory[historyIndex]
+            updateCanUndoRedo()
+            scheduleProcessing(immediate = true)
+        }
     }
 
     fun autoEnhance() {
@@ -160,6 +192,7 @@ class EditViewModel(
                 )
             }
             scheduleProcessing(immediate = true)
+            scheduleHistoryPush()
         }
     }
 
@@ -182,15 +215,22 @@ class EditViewModel(
         }
     }
 
+    private fun scheduleHistoryPush() {
+        historyJob?.cancel()
+        historyJob = viewModelScope.launch {
+            delay(800)
+            pushHistory(_editState.value)
+        }
+    }
+
     private fun scheduleProcessing(immediate: Boolean = false) {
         processingJob?.cancel()
         processingJob = viewModelScope.launch {
-            if (!immediate) delay(16)
+            if (!immediate) delay(50)
             val source = _sourceBitmap.value ?: return@launch
             val state = _editState.value
             val processed = withContext(Dispatchers.Default) {
-                // For real-time preview, work on a downscaled version
-                val previewWidth = minOf(source.width, 1080)
+                val previewWidth = minOf(source.width, 480)
                 val scale = previewWidth.toFloat() / source.width
                 val previewHeight = (source.height * scale).toInt()
                 val scaledSource = if (scale < 1f) {
@@ -206,7 +246,15 @@ class EditViewModel(
         if (historyIndex < editHistory.size - 1) {
             editHistory.subList(historyIndex + 1, editHistory.size).clear()
         }
-        editHistory.add(state)
-        historyIndex = editHistory.size - 1
+        if (editHistory.isEmpty() || editHistory.last() != state) {
+            editHistory.add(state)
+            historyIndex = editHistory.size - 1
+        }
+        updateCanUndoRedo()
+    }
+
+    private fun updateCanUndoRedo() {
+        _canUndo.value = historyIndex > 0
+        _canRedo.value = historyIndex < editHistory.size - 1
     }
 }

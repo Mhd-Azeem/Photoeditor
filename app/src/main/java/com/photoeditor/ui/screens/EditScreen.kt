@@ -53,23 +53,26 @@ fun EditScreen(
 ) {
     val editState by viewModel.editState.collectAsState()
     val previewBitmap by viewModel.previewBitmap.collectAsState()
+    val sourceBitmap by viewModel.sourceBitmap.collectAsState()
     val selectedTab by viewModel.selectedTab.collectAsState()
     val selectedAdjustment by viewModel.selectedAdjustment.collectAsState()
     val filterPreviews by viewModel.filterPreviews.collectAsState()
     val isSaving by viewModel.isSaving.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val savedUri by viewModel.savedUri.collectAsState()
+    val canUndo by viewModel.canUndo.collectAsState()
+    val canRedo by viewModel.canRedo.collectAsState()
 
     var showRevertDialog by remember { mutableStateOf(false) }
     var showDiscardDialog by remember { mutableStateOf(false) }
     var bwActive by remember { mutableStateOf(false) }
+    var isComparing by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
     LaunchedEffect(savedUri) {
         if (savedUri != null) onDismiss()
     }
 
-    // Dial value and range depend on the active tab
     val dialValue: Float = when (selectedTab) {
         EditTab.ADJUST  -> selectedAdjustment?.let { editState.getAdjustmentValue(it) } ?: 0f
         EditTab.FILTERS -> editState.filterIntensity
@@ -133,14 +136,16 @@ fun EditScreen(
             .background(Color.Black)
             .statusBarsPadding()
     ) {
-        // 1. iOS-style top bar: "ADJUST" centered, "..." on right
         EditTopBar(
             selectedTab = selectedTab,
+            canUndo = canUndo,
+            canRedo = canRedo,
+            onUndo = { viewModel.undo() },
+            onRedo = { viewModel.redo() },
             onMore = { if (editState.isModified()) showRevertDialog = true },
             modifier = Modifier.fillMaxWidth()
         )
 
-        // 2. Image preview (takes all remaining space)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -152,16 +157,14 @@ fun EditScreen(
                     modifier = Modifier.align(Alignment.Center)
                 )
             } else {
-                // Full-screen image
                 ImagePreview(
-                    bitmap = previewBitmap,
+                    bitmap = if (isComparing) sourceBitmap else previewBitmap,
                     showCropOverlay = selectedTab == EditTab.CROP,
                     cropState = editState.cropState,
                     onCropChanged = { viewModel.updateCrop(it) },
                     modifier = Modifier.fillMaxSize()
                 )
 
-                // Floating controls overlaid on image (bottom-center), only in Adjust tab
                 if (selectedTab == EditTab.ADJUST) {
                     FloatingControls(
                         isAutoEnhanced = false,
@@ -174,14 +177,14 @@ fun EditScreen(
                                 if (bwActive) 100f else 0f
                             )
                         },
-                        onCompare = { /* TODO: hold-to-compare */ },
+                        onCompareStart = { isComparing = true },
+                        onCompareEnd = { isComparing = false },
                         modifier = Modifier.align(Alignment.BottomCenter)
                     )
                 }
             }
         }
 
-        // 3. Tab-specific content strip (icons / filter carousel / crop controls)
         AnimatedContent(
             targetState = selectedTab,
             transitionSpec = { fadeIn() togetherWith fadeOut() },
@@ -212,7 +215,6 @@ fun EditScreen(
             }
         }
 
-        // 4. iOS-style dial ruler (context-sensitive: adjustment / intensity / rotation)
         DialRuler(
             value = dialValue,
             onValueChange = ::onDialChange,
@@ -220,7 +222,6 @@ fun EditScreen(
             modifier = Modifier.fillMaxWidth()
         )
 
-        // 5. Bottom bar: Cancel | ☀ ◑ ✂ | Done
         EditBottomBar(
             selectedTab = selectedTab,
             onTabSelected = { viewModel.selectTab(it) },
@@ -235,7 +236,6 @@ fun EditScreen(
         )
     }
 
-    // Saving overlay
     if (isSaving) {
         Box(
             modifier = Modifier

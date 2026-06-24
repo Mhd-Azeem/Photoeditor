@@ -1,11 +1,9 @@
 package com.photoeditor.ui.components
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,15 +21,12 @@ import androidx.compose.material.icons.filled.FilterBAndW
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -43,7 +38,8 @@ fun FloatingControls(
     bwActive: Boolean,
     onAutoEnhance: () -> Unit,
     onToggleBW: () -> Unit,
-    onCompare: () -> Unit,
+    onCompareStart: () -> Unit,
+    onCompareEnd: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -70,18 +66,39 @@ fun FloatingControls(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Circular action buttons
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             CircularActionButton(
                 icon = Icons.Default.AutoFixHigh,
                 isActive = false,
                 onClick = onAutoEnhance
             )
-            CircularActionButton(
-                icon = Icons.Default.Compare,
-                isActive = false,
-                onClick = onCompare
-            )
+
+            // Compare: press-and-hold shows original, release returns to edited view
+            Box(
+                modifier = Modifier
+                    .size(50.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF141414).copy(alpha = 0.85f))
+                    .border(1.dp, Color(0xFF666666), CircleShape)
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onPress = {
+                                onCompareStart()
+                                tryAwaitRelease()
+                                onCompareEnd()
+                            }
+                        )
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Compare,
+                    contentDescription = "Hold to compare original",
+                    tint = Color.White,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+
             CircularActionButton(
                 icon = Icons.Default.FilterBAndW,
                 isActive = bwActive,

@@ -5,16 +5,14 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -36,6 +34,9 @@ fun CropOverlay(
     onCropChanged: (CropState) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val currentCropState by rememberUpdatedState(cropState)
+    val currentOnCropChanged by rememberUpdatedState(onCropChanged)
+
     var dragTarget by remember { mutableStateOf(DragTarget.NONE) }
     var startDragOffset by remember { mutableStateOf(Offset.Zero) }
     var startCropState by remember { mutableStateOf(cropState) }
@@ -43,20 +44,21 @@ fun CropOverlay(
     Canvas(
         modifier = modifier
             .fillMaxSize()
-            .pointerInput(cropState) {
+            .pointerInput(Unit) {
                 detectDragGestures(
                     onDragStart = { touchOffset ->
                         val w = size.width.toFloat()
                         val h = size.height.toFloat()
+                        val cs = currentCropState
                         val rect = Rect(
-                            left = cropState.left * w,
-                            top = cropState.top * h,
-                            right = cropState.right * w,
-                            bottom = cropState.bottom * h
+                            left = cs.left * w,
+                            top = cs.top * h,
+                            right = cs.right * w,
+                            bottom = cs.bottom * h
                         )
                         dragTarget = findDragTarget(touchOffset, rect)
                         startDragOffset = touchOffset
-                        startCropState = cropState
+                        startCropState = cs
                     },
                     onDragEnd = { dragTarget = DragTarget.NONE },
                     onDragCancel = { dragTarget = DragTarget.NONE },
@@ -111,7 +113,7 @@ fun CropOverlay(
 
                         // Apply aspect ratio constraint if set
                         val constrained = applyAspectRatio(newState, dragTarget)
-                        onCropChanged(constrained)
+                        currentOnCropChanged(constrained)
                     }
                 )
             }

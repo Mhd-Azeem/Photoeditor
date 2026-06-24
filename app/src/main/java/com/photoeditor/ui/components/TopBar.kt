@@ -1,11 +1,14 @@
 package com.photoeditor.ui.components
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.Redo
+import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -23,6 +26,10 @@ import com.photoeditor.ui.theme.White
 @Composable
 fun EditTopBar(
     selectedTab: EditTab,
+    canUndo: Boolean = false,
+    canRedo: Boolean = false,
+    onUndo: () -> Unit = {},
+    onRedo: () -> Unit = {},
     onMore: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -46,6 +53,24 @@ fun EditTopBar(
             letterSpacing = 1.sp,
             textAlign = TextAlign.Center
         )
+
+        // Left side: undo / redo
+        Row(modifier = Modifier.align(Alignment.CenterStart)) {
+            IconButton(onClick = onUndo, enabled = canUndo) {
+                Icon(
+                    imageVector = Icons.Default.Undo,
+                    contentDescription = "Undo",
+                    tint = if (canUndo) White else SubtleGray
+                )
+            }
+            IconButton(onClick = onRedo, enabled = canRedo) {
+                Icon(
+                    imageVector = Icons.Default.Redo,
+                    contentDescription = "Redo",
+                    tint = if (canRedo) White else SubtleGray
+                )
+            }
+        }
 
         // "..." overflow menu on right
         Box(modifier = Modifier.align(Alignment.CenterEnd)) {
