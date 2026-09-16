@@ -56,7 +56,7 @@ fun HorizontalValueSlider(
                         onDrag = { change, dragAmount ->
                             change.consume()
                             val range = valueRange.endInclusive - valueRange.start
-                            val delta = dragAmount.x / size.width.toFloat() * range
+                            val delta = -(dragAmount.x / size.width.toFloat() * range)
                             val newValue = (value + delta).coerceIn(valueRange.start, valueRange.endInclusive)
                             onValueChange(newValue)
                         }
@@ -67,10 +67,10 @@ fun HorizontalValueSlider(
             val trackHeight = 3.dp.toPx()
             val thumbRadius = 11.dp.toPx()
             val normalized = (animatedValue - valueRange.start) / (valueRange.endInclusive - valueRange.start)
-            val thumbX = normalized * size.width
+            // Reverse the visual scale too, so the thumb still follows the user's finger.
+            val thumbX = (1f - normalized) * size.width
             val midX = size.width / 2f
 
-            // Full track (inactive)
             drawLine(
                 color = Color(0xFF48484A),
                 start = Offset(0f, centerY),
@@ -79,7 +79,6 @@ fun HorizontalValueSlider(
                 cap = StrokeCap.Round
             )
 
-            // Filled segment from center (0-point) to thumb
             val fillStart = minOf(midX, thumbX)
             val fillEnd = maxOf(midX, thumbX)
             if (fillEnd > fillStart) {
@@ -92,7 +91,6 @@ fun HorizontalValueSlider(
                 )
             }
 
-            // Center tick mark
             drawLine(
                 color = Color(0xFF8E8E93),
                 start = Offset(midX, centerY - 6.dp.toPx()),
@@ -101,13 +99,6 @@ fun HorizontalValueSlider(
                 cap = StrokeCap.Round
             )
 
-            // Thumb
-            drawCircle(
-                color = Color.White,
-                radius = thumbRadius,
-                center = Offset(thumbX, centerY)
-            )
-            // Thumb shadow
             drawCircle(
                 color = Color.Black.copy(alpha = 0.3f),
                 radius = thumbRadius + 1.dp.toPx(),
