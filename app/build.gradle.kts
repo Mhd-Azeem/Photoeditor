@@ -4,6 +4,17 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val permanentKeystorePath = System.getenv("PHOTOEDITOR_KEYSTORE_PATH")
+val permanentKeystorePassword = System.getenv("PHOTOEDITOR_KEYSTORE_PASSWORD")
+val permanentKeyAlias = System.getenv("PHOTOEDITOR_KEY_ALIAS")
+val permanentKeyPassword = System.getenv("PHOTOEDITOR_KEY_PASSWORD")
+val hasPermanentSigning = listOf(
+    permanentKeystorePath,
+    permanentKeystorePassword,
+    permanentKeyAlias,
+    permanentKeyPassword
+).all { !it.isNullOrBlank() }
+
 android {
     namespace = "com.photoeditor"
     compileSdk = 34
@@ -12,15 +23,32 @@ android {
         applicationId = "com.photoeditor"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
+        versionName = "1.0.${versionCode}"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
+    }
+
+    signingConfigs {
+        if (hasPermanentSigning) {
+            create("permanentRelease") {
+                storeFile = file(permanentKeystorePath!!)
+                storePassword = permanentKeystorePassword
+                keyAlias = permanentKeyAlias
+                keyPassword = permanentKeyPassword
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = if (hasPermanentSigning) {
+                signingConfigs.getByName("permanentRelease")
+            } else {
+                // Makes GitHub builds installable even before permanent signing secrets are configured.
+                signingConfigs.getByName("debug")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -36,6 +64,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     packaging {
         resources {
