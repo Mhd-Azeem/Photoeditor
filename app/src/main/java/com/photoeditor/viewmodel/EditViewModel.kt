@@ -144,19 +144,23 @@ class EditViewModel(
 
     fun updateCrop(crop: CropState) {
         _editState.update { it.copy(cropState = crop) }
+        scheduleHistoryPush()
     }
 
     fun updateAspectRatio(ratio: AspectRatio) {
         _editState.update { it.copy(cropState = it.cropState.copy(aspectRatio = ratio)) }
+        scheduleHistoryPush()
     }
 
     fun updateRotation(rotation: Float) {
         _editState.update { it.copy(cropState = it.cropState.copy(rotation = rotation)) }
+        scheduleProcessing()
         scheduleHistoryPush()
     }
 
     fun resetCrop() {
         _editState.update { it.copy(cropState = CropState()) }
+        scheduleProcessing(immediate = true)
         scheduleHistoryPush()
     }
 
@@ -197,9 +201,16 @@ class EditViewModel(
     }
 
     fun revertToOriginal() {
-        _editState.value = EditState()
+        historyJob?.cancel()
+        processingJob?.cancel()
+        val originalState = EditState()
+        _editState.value = originalState
         _previewBitmap.value = _sourceBitmap.value
-        pushHistory(EditState())
+
+        // Revert is intentionally destructive, matching the confirmation dialog.
+        editHistory.clear()
+        historyIndex = -1
+        pushHistory(originalState)
     }
 
     fun saveImage() {
@@ -210,7 +221,11 @@ class EditViewModel(
                 ImageProcessor.process(source, _editState.value)
             }
             val uri = repository.saveToGallery(processed)
-            _savedUri.value = uri
+            if (uri != null) {
+                _savedUri.value = uri
+            } else {
+                _errorMessage.value = "Failed to save image"
+            }
             _isSaving.value = false
         }
     }
