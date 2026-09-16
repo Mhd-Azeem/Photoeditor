@@ -17,15 +17,10 @@ data class AdjustmentConfig(
 )
 
 enum class AdjustmentType {
-    // Light
     EXPOSURE, BRILLIANCE, HIGHLIGHTS, SHADOWS, CONTRAST, BRIGHTNESS, BLACK_POINT,
-    // Color
     SATURATION, VIBRANCE, WARMTH, TINT,
-    // B&W
     BW_INTENSITY, BW_NEUTRALS, BW_TONE, BW_GRAIN,
-    // Detail
     SHARPNESS, DEFINITION, NOISE_REDUCTION,
-    // Other
     VIGNETTE
 }
 
@@ -47,8 +42,8 @@ val allAdjustments = listOf(
     AdjustmentConfig(AdjustmentType.BW_GRAIN,       "Grain",           AdjustmentGroup.BLACK_WHITE, 0f, 0f, 100f),
     AdjustmentConfig(AdjustmentType.SHARPNESS,      "Sharpness",       AdjustmentGroup.DETAIL),
     AdjustmentConfig(AdjustmentType.DEFINITION,     "Definition",      AdjustmentGroup.DETAIL),
-    AdjustmentConfig(AdjustmentType.NOISE_REDUCTION,"Noise Reduction", AdjustmentGroup.DETAIL),
-    AdjustmentConfig(AdjustmentType.VIGNETTE,       "Vignette",        AdjustmentGroup.LIGHT)
+    AdjustmentConfig(AdjustmentType.NOISE_REDUCTION,"Noise Reduction", AdjustmentGroup.DETAIL, 0f, 0f, 100f),
+    AdjustmentConfig(AdjustmentType.VIGNETTE,       "Vignette",        AdjustmentGroup.LIGHT, 0f, 0f, 100f)
 )
 
 fun AdjustmentType.config(): AdjustmentConfig =
