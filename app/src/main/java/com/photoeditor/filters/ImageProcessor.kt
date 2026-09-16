@@ -115,7 +115,6 @@ object ImageProcessor {
                     b.toInt().coerceIn(0, 255)
             }
         }
-        // Copy border pixels unchanged
         for (x in 0 until w) { output[x] = pixels[x]; output[(h-1)*w+x] = pixels[(h-1)*w+x] }
         for (y in 0 until h) { output[y*w] = pixels[y*w]; output[y*w+w-1] = pixels[y*w+w-1] }
 
@@ -132,7 +131,6 @@ object ImageProcessor {
         val temp = IntArray(w * h)
         val out = IntArray(w * h)
 
-        // Horizontal pass
         for (y in 0 until h) {
             for (x in 0 until w) {
                 var r = 0; var g = 0; var b = 0; var count = 0
@@ -148,7 +146,6 @@ object ImageProcessor {
                 temp[y * w + x] = (a shl 24) or ((r/count) shl 16) or ((g/count) shl 8) or (b/count)
             }
         }
-        // Vertical pass
         for (y in 0 until h) {
             for (x in 0 until w) {
                 var r = 0; var g = 0; var b = 0; var count = 0
@@ -178,9 +175,9 @@ object ImageProcessor {
         for (i in pixels.indices) {
             val c = pixels[i]
             val noise = rng.nextInt(-strength, strength + 1)
-            val r = ((c shr 16) and 0xFF + noise).coerceIn(0, 255)
-            val g = ((c shr 8) and 0xFF + noise).coerceIn(0, 255)
-            val b = (c and 0xFF + noise).coerceIn(0, 255)
+            val r = (((c shr 16) and 0xFF) + noise).coerceIn(0, 255)
+            val g = (((c shr 8) and 0xFF) + noise).coerceIn(0, 255)
+            val b = ((c and 0xFF) + noise).coerceIn(0, 255)
             pixels[i] = (c and 0xFF000000.toInt()) or (r shl 16) or (g shl 8) or b
         }
         val result = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
@@ -222,7 +219,6 @@ object ImageProcessor {
     }
 
     fun autoEnhance(source: Bitmap): Map<String, Float> {
-        // Analyse the bitmap to determine auto adjustments
         val scaled = Bitmap.createScaledBitmap(source, 64, 64, true)
         val pixels = IntArray(64 * 64)
         scaled.getPixels(pixels, 0, 64, 0, 0, 64, 64)
