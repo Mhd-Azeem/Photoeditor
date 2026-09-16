@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.weight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
@@ -65,7 +66,6 @@ fun EditScreen(
 
     var showRevertDialog by remember { mutableStateOf(false) }
     var showDiscardDialog by remember { mutableStateOf(false) }
-    var bwActive by remember { mutableStateOf(false) }
     var isComparing by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
@@ -74,21 +74,21 @@ fun EditScreen(
     }
 
     val dialValue: Float = when (selectedTab) {
-        EditTab.ADJUST  -> selectedAdjustment?.let { editState.getAdjustmentValue(it) } ?: 0f
+        EditTab.ADJUST -> selectedAdjustment?.let { editState.getAdjustmentValue(it) } ?: 0f
         EditTab.FILTERS -> editState.filterIntensity
-        EditTab.CROP    -> editState.cropState.rotation
+        EditTab.CROP -> editState.cropState.rotation
     }
     val dialRange: ClosedFloatingPointRange<Float> = when (selectedTab) {
-        EditTab.ADJUST  -> selectedAdjustment?.config()?.let { it.minValue..it.maxValue } ?: -100f..100f
+        EditTab.ADJUST -> selectedAdjustment?.config()?.let { it.minValue..it.maxValue } ?: -100f..100f
         EditTab.FILTERS -> 0f..100f
-        EditTab.CROP    -> -45f..45f
+        EditTab.CROP -> -45f..45f
     }
 
     fun onDialChange(v: Float) {
         when (selectedTab) {
-            EditTab.ADJUST  -> selectedAdjustment?.let { viewModel.updateAdjustment(it, v) }
+            EditTab.ADJUST -> selectedAdjustment?.let { viewModel.updateAdjustment(it, v) }
             EditTab.FILTERS -> viewModel.updateFilterIntensity(v)
-            EditTab.CROP    -> viewModel.updateRotation(v)
+            EditTab.CROP -> viewModel.updateRotation(v)
         }
     }
 
@@ -166,15 +166,15 @@ fun EditScreen(
                 )
 
                 if (selectedTab == EditTab.ADJUST) {
+                    val bwActive = editState.bwIntensity != 0f
                     FloatingControls(
                         isAutoEnhanced = false,
                         bwActive = bwActive,
                         onAutoEnhance = { viewModel.autoEnhance() },
                         onToggleBW = {
-                            bwActive = !bwActive
                             viewModel.updateAdjustment(
                                 AdjustmentType.BW_INTENSITY,
-                                if (bwActive) 100f else 0f
+                                if (bwActive) 0f else 100f
                             )
                         },
                         onCompareStart = { isComparing = true },
@@ -260,5 +260,6 @@ private fun shareImage(context: android.content.Context, bitmap: Bitmap) {
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         context.startActivity(Intent.createChooser(intent, "Share Image"))
-    } catch (_: Exception) {}
+    } catch (_: Exception) {
+    }
 }
