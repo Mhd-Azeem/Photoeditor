@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,7 +23,6 @@ import androidx.compose.material.icons.filled.RotateRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,7 +49,6 @@ fun CropPanel(
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
-        // Rotation label (above the dial)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -75,7 +74,6 @@ fun CropPanel(
             }
         }
 
-        // Aspect ratio chips + rotate buttons in one row
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -87,8 +85,12 @@ fun CropPanel(
                 onClick = { onRotationChanged(cropState.rotation - 90f) },
                 modifier = Modifier.size(36.dp)
             ) {
-                Icon(Icons.Default.RotateLeft, contentDescription = "Rotate Left",
-                    tint = SubtleGray, modifier = Modifier.size(22.dp))
+                Icon(
+                    Icons.Default.RotateLeft,
+                    contentDescription = "Rotate Left",
+                    tint = SubtleGray,
+                    modifier = Modifier.size(22.dp)
+                )
             }
 
             LazyRow(
@@ -109,8 +111,12 @@ fun CropPanel(
                 onClick = { onRotationChanged(cropState.rotation + 90f) },
                 modifier = Modifier.size(36.dp)
             ) {
-                Icon(Icons.Default.RotateRight, contentDescription = "Rotate Right",
-                    tint = SubtleGray, modifier = Modifier.size(22.dp))
+                Icon(
+                    Icons.Default.RotateRight,
+                    contentDescription = "Rotate Right",
+                    tint = SubtleGray,
+                    modifier = Modifier.size(22.dp)
+                )
             }
         }
 
