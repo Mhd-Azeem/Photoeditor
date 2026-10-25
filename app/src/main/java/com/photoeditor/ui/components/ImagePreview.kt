@@ -78,6 +78,7 @@ fun ImagePreview(
                     )
                     CropOverlay(
                         cropState = cropState,
+                        imageAspectRatio = imageAspect,
                         onCropChanged = onCropChanged,
                         modifier = Modifier
                             .offset(x = imgLeft.dp, y = imgTop.dp)
