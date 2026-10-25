@@ -67,6 +67,7 @@ class EditViewModel(
     val canRedo: StateFlow<Boolean> = _canRedo.asStateFlow()
 
     private var processingJob: Job? = null
+    private var cachedPreviewSource: Bitmap? = null
     private var historyJob: Job? = null
     private val editHistory = mutableListOf<EditState>()
     private var historyIndex = -1
@@ -82,6 +83,10 @@ class EditViewModel(
             val bitmap = repository.loadBitmap(imageUri)
             if (bitmap != null) {
                 _sourceBitmap.value = bitmap
+                cachedPreviewSource = withContext(Dispatchers.Default) {
+                    val factor = minOf(1f, 720f / maxOf(bitmap.width, bitmap.height))
+                    if (factor < 1f) Bitmap.createScaledBitmap(bitmap, (bitmap.width * factor).toInt().coerceAtLeast(1), (bitmap.height * factor).toInt().coerceAtLeast(1), true) else bitmap
+                }
                 _previewBitmap.value = bitmap
                 pushHistory(EditState())
                 generateFilterPreviews(bitmap)
@@ -148,7 +153,26 @@ class EditViewModel(
     }
 
     fun updateAspectRatio(ratio: AspectRatio) {
-        _editState.update { it.copy(cropState = it.cropState.copy(aspectRatio = ratio)) }
+        _editState.update { current ->
+            val crop = current.cropState
+            val source = _sourceBitmap.value
+            val imageRatio = if (source != null) source.width.toFloat() / source.height else 1f
+            val target = when (ratio) {
+                AspectRatio.FREE -> null
+                AspectRatio.ORIGINAL -> imageRatio
+                else -> ratio.ratio
+            }
+            if (target == null) current.copy(cropState = crop.copy(aspectRatio = ratio))
+            else {
+                val normalized = target / imageRatio
+                val width = crop.right - crop.left
+                val height = crop.bottom - crop.top
+                val newWidth = minOf(width, height * normalized)
+                val newHeight = minOf(height, newWidth / normalized)
+                val cx = (crop.left + crop.right) / 2f
+                val cy = (crop.top + crop.bottom) / 2f
+                current.copy(cropState = crop.copy(left = cx - newWidth / 2f, right = cx + newWidth / 2f, top = cy - newHeight / 2f, bottom = cy + newHeight / 2f, aspectRatio = ratio))
+            } }
         scheduleHistoryPush()
     }
 
@@ -245,13 +269,9 @@ class EditViewModel(
             val source = _sourceBitmap.value ?: return@launch
             val state = _editState.value
             val processed = withContext(Dispatchers.Default) {
-                val previewWidth = minOf(source.width, 480)
-                val scale = previewWidth.toFloat() / source.width
-                val previewHeight = (source.height * scale).toInt()
-                val scaledSource = if (scale < 1f) {
-                    Bitmap.createScaledBitmap(source, previewWidth, previewHeight, true)
-                } else source
-                ImageProcessor.process(scaledSource, state)
+                val previewSource = cachedPreviewSource ?: source
+                val previewState = state.copy(cropState = state.cropState.copy(left = 0f, top = 0f, right = 1f, bottom = 1f))
+                ImageProcessor.process(previewSource, previewState)
             }
             _previewBitmap.value = processed
         }
