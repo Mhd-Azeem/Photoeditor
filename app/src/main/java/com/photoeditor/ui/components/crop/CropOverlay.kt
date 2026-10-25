@@ -31,6 +31,7 @@ private enum class DragTarget {
 @Composable
 fun CropOverlay(
     cropState: CropState,
+    imageAspectRatio: Float,
     onCropChanged: (CropState) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -112,7 +113,7 @@ fun CropOverlay(
                         }
 
                         // Apply aspect ratio constraint if set
-                        val constrained = applyAspectRatio(newState, dragTarget)
+                        val constrained = applyAspectRatio(newState, dragTarget, imageAspectRatio)
                         currentOnCropChanged(constrained)
                     }
                 )
@@ -209,13 +210,14 @@ private fun findDragTarget(touch: Offset, rect: Rect): DragTarget {
     }
 }
 
-private fun applyAspectRatio(state: CropState, dragTarget: DragTarget): CropState {
-    val ratio = state.aspectRatio.ratio ?: return state
+private fun applyAspectRatio(state: CropState, dragTarget: DragTarget, imageAspectRatio: Float): CropState {
+    val ratio = (state.aspectRatio.ratio ?: if (state.aspectRatio == com.photoeditor.data.model.AspectRatio.ORIGINAL) imageAspectRatio else return state) / imageAspectRatio
     val w = state.right - state.left
     val h = state.bottom - state.top
     val currentRatio = w / h
     return if (abs(currentRatio - ratio) > 0.01f) {
         val newH = w / ratio
-        state.copy(bottom = (state.top + newH).coerceAtMost(1f))
+        if (state.top + newH <= 1f) state.copy(bottom = state.top + newH)
+        else state.copy(right = (state.left + h * ratio).coerceAtMost(1f))
     } else state
 }
