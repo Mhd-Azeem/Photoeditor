@@ -1,0 +1,42 @@
+name: Build and publish Photo Editor APK
+on:
+  push:
+    branches:
+      - 'claude/cool-mccarthy-okxdtg'
+    paths:
+      - 'app/**'
+      - 'build.gradle.kts'
+      - 'settings.gradle.kts'
+      - '.github/workflows/publish-apk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+      - name: Build installable APK
+        run: gradle --no-daemon :app:assembleRelease
+      - name: Verify APK exists
+        run: test -s app/build/outputs/apk/release/app-release.apk
+      - name: Publish APK to GitHub Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="v1.0.${{ github.run_number }}-fixes"
+          gh release create "$TAG" app/build/outputs/apk/release/app-release.apk \
+            --title "Photo Editor $TAG" \
+            --notes "Crop aspect ratio and preview performance fixes. Test build; verify rotation and crop on-device." \
+            --target "${{ github.sha }}" \
+            --latest
