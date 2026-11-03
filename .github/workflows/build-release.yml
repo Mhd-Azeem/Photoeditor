@@ -28,6 +28,8 @@ jobs:
           cache: gradle
 
       - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
 
       - name: Configure Android SDK
         run: echo "sdk.dir=${ANDROID_HOME}" > local.properties
