@@ -54,38 +54,77 @@ jobs:
             echo "PHOTOEDITOR_KEY_PASSWORD=$PHOTOEDITOR_KEY_PASSWORD" >> "$GITHUB_ENV"
           fi
 
-      - name: Build signed release APK
-        run: ./gradlew :app:assembleRelease --no-daemon --stacktrace
+      - name: Install native build tools
+        run: sdkmanager "ndk;26.3.11579264" "cmake;3.22.1"
 
-      - name: Prepare APK
+      - name: Prepare pinned NCNN and bundled photo model
+        run: bash scripts/prepare-ai.sh
+
+      - name: Require existing signing identity
+        run: |
+          if [ -z "${PHOTOEDITOR_KEYSTORE_PATH:-}" ] && [ ! -f "$HOME/.android/debug.keystore" ]; then
+            echo "Existing signing key unavailable; refusing to generate a replacement identity."
+            exit 1
+          fi
+
+      - name: Build release and inference tests
+        run: ./gradlew :app:assembleRelease :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon --stacktrace
+
+      - name: Prepare and verify APK contents
         run: |
           mkdir -p release-apks
-          cp app/build/outputs/apk/release/app-release.apk release-apks/Azeems-Editor.apk
+          cp app/build/outputs/apk/release/app-release.apk release-apks/AZ-Photo-Editor-v2.0.apk
+          python3 scripts/verify-apk.py release-apks/AZ-Photo-Editor-v2.0.apk
+          BUILD_TOOLS=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs release-apks/AZ-Photo-Editor-v2.0.apk | tee release-apks/signing.txt
+          "$BUILD_TOOLS/aapt" dump badging release-apks/AZ-Photo-Editor-v2.0.apk | head -1 | tee release-apks/package.txt
+          grep -q "name='com.photoeditor'" release-apks/package.txt
+          grep -q "versionName='2.0'" release-apks/package.txt
 
-      - name: Upload APK artifact
+      - name: Compare previous signing certificate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p prior-apk
+          gh release download latest --pattern Azeems-Editor.apk --dir prior-apk
+          BUILD_TOOLS=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)
+          "$BUILD_TOOLS/apksigner" verify --print-certs prior-apk/Azeems-Editor.apk > prior-apk/signing.txt
+          diff <(grep 'certificate SHA-256 digest' prior-apk/signing.txt) <(grep 'certificate SHA-256 digest' release-apks/signing.txt)
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Test actual bundled model inference on Android CPU
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          arch: x86_64
+          target: default
+          disable-animations: true
+          script: |
+            adb install app/build/outputs/apk/debug/app-debug.apk
+            adb install app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+            adb shell am instrument -w com.photoeditor.test/androidx.test.runner.AndroidJUnitRunner | tee release-apks/instrumentation.txt
+            grep -q 'OK (1 test)' release-apks/instrumentation.txt
+
+      - name: Upload verified build evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Azeems-Editor-release
-          path: release-apks/Azeems-Editor.apk
+          name: AZ-Photo-Editor-v2.0
+          path: |
+            release-apks/
+            app/build/reports/
           retention-days: 30
           compression-level: 0
 
-      - name: Remove old latest APK asset
+      - name: Publish separate v2.0 release
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete-asset latest Azeems-Editor.apk --repo "$GITHUB_REPOSITORY" -y 2>/dev/null || true
-
-      - name: Publish APK to GitHub Releases
-        uses: softprops/action-gh-release@v3
-        with:
-          tag_name: latest
-          name: Azeem's Editor Latest
-          body: |
-            Build number: ${{ github.run_number }}
-            Automatically rebuilt from commit ${{ github.sha }}.
-
-            The app checks this release automatically and offers `Azeems-Editor.apk` when a newer build is available.
-          prerelease: false
-          make_latest: true
-          files: release-apks/Azeems-Editor.apk
+          gh release create v2.0 release-apks/AZ-Photo-Editor-v2.0.apk release-apks/verification.json release-apks/signing.txt release-apks/instrumentation.txt \
+            --title "AZ Photo Editor v2.0 — Offline 4K AI" \
+            --notes-file RELEASE-v2.0.md --target "${{ github.sha }}" --latest

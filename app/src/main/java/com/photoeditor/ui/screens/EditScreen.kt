@@ -51,6 +51,13 @@ fun EditScreen(
     viewModel: EditViewModel,
     onDismiss: () -> Unit
 ) {
+    val aiProgress by viewModel.aiProgress.collectAsState()
+    val aiStatus by viewModel.aiStatus.collectAsState()
+    val aiBefore by viewModel.aiBefore.collectAsState()
+    val aiResult by viewModel.aiResult.collectAsState()
+    val aiExporting by viewModel.aiExporting.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
+    var showBefore by remember { mutableStateOf(false) }
     val editState by viewModel.editState.collectAsState()
     val previewBitmap by viewModel.previewBitmap.collectAsState()
     val sourceBitmap by viewModel.sourceBitmap.collectAsState()
@@ -145,6 +152,13 @@ fun EditScreen(
             modifier = Modifier.fillMaxWidth()
         )
 
+        TextButton(
+            onClick = { viewModel.enhance4K() },
+            enabled = !isLoading && !isSaving && sourceBitmap != null && aiProgress == null,
+            modifier = Modifier.fillMaxWidth()
+        ) { Text("4K AI • Offline photo enhancement", color = iOSYellow) }
+        if (aiStatus == "Saved to Pictures/PhotoEditor") Text(aiStatus, color = iOSYellow)
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -233,6 +247,42 @@ fun EditScreen(
                 .fillMaxWidth()
                 .navigationBarsPadding()
         )
+    }
+
+    if (errorMessage != null) {
+        AlertDialog(onDismissRequest = { viewModel.clearError() },
+            title = { Text("Photo Editor") }, text = { Text(errorMessage.orEmpty()) },
+            confirmButton = { TextButton(onClick = { viewModel.clearError() }) { Text("OK") } })
+    }
+    if (aiProgress != null) {
+        AlertDialog(onDismissRequest = { viewModel.cancelEnhancement() },
+            title = { Text("Offline 4K AI") },
+            text = { Column {
+                androidx.compose.material3.LinearProgressIndicator(progress = { aiProgress ?: 0f }, modifier = Modifier.fillMaxWidth())
+                Text("${((aiProgress ?: 0f) * 100).toInt()}% • $aiStatus")
+                Text("64×64 tiles • 32px context • Keep the app open. CPU processing can take several minutes.")
+            } },
+            confirmButton = { TextButton(onClick = { viewModel.cancelEnhancement() }) { Text("Cancel") } },
+            properties = androidx.compose.ui.window.DialogProperties(dismissOnClickOutside = false))
+    }
+    if (aiResult != null) {
+        androidx.compose.ui.window.Dialog(
+            onDismissRequest = { viewModel.dismissAIResult() },
+            properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Column(Modifier.fillMaxSize().background(Color.Black).statusBarsPadding().navigationBarsPadding()) {
+                Text("4K AI • ${aiResult?.width} × ${aiResult?.height}", color = Color.White)
+                Text(if (showBefore) "Before • Current edits" else "After • RealESRGAN x4plus", color = iOSYellow)
+                ImagePreview(bitmap = if (showBefore) aiBefore else aiResult, showCropOverlay = false,
+                    cropState = com.photoeditor.data.model.CropState(), onCropChanged = {},
+                    modifier = Modifier.fillMaxWidth().weight(1f))
+                TextButton(onClick = { showBefore = !showBefore }) { Text(if (showBefore) "Show after" else "Show before") }
+                TextButton(onClick = { viewModel.exportAIResult() }, enabled = !aiExporting) {
+                    Text(if (aiExporting) "Saving…" else "Export 4K to Gallery")
+                }
+                TextButton(onClick = { viewModel.dismissAIResult() }, enabled = !aiExporting) { Text("Back to editor") }
+            }
+        }
     }
 
     if (isSaving) {

@@ -129,3 +129,9 @@ On Android 10+, photos are saved to `Pictures/PhotoEditor/` using the MediaStore
 5. Tap **Done** to save the edited image to your gallery
 6. Tap **Share** to share directly from the editor
 7. Use **More → Revert to Original** to undo all changes
+
+## Version 2.0 offline AI build
+
+Run `bash scripts/prepare-ai.sh` before Gradle. This downloads the pinned NCNN 20240410 Android Vulkan SDK and extracts the official RealESRGAN x4plus photo NCNN model from the upstream 20220424 release. Both model files and the SDK archive are SHA-256 verified. The resulting APK contains the model and works entirely offline; only the build machine needs network access. Binary build inputs are ignored by git.
+
+Install NDK 26.3.11579264 and CMake 3.22.1, then run `./gradlew :app:assembleRelease`. Existing signing environment variables still apply. CI requires the existing signing key, compares its certificate to the previous latest APK, verifies packaged model/native contents, and runs real CPU inference on an Android emulator before publishing the separate v2.0 release. See RELEASE-v2.0.md for output sizing and physical-device testing limitations.

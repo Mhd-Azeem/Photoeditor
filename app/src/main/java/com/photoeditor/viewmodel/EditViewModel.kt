@@ -28,6 +28,89 @@ class EditViewModel(
     private val imageUri: Uri
 ) : AndroidViewModel(application) {
 
+    private val _aiProgress = MutableStateFlow<Float?>(null)
+    val aiProgress = _aiProgress.asStateFlow()
+    private val _aiStatus = MutableStateFlow("")
+    val aiStatus = _aiStatus.asStateFlow()
+    private val _aiBefore = MutableStateFlow<Bitmap?>(null)
+    val aiBefore = _aiBefore.asStateFlow()
+    private val _aiResult = MutableStateFlow<Bitmap?>(null)
+    val aiResult = _aiResult.asStateFlow()
+    private val _aiExporting = MutableStateFlow(false)
+    val aiExporting = _aiExporting.asStateFlow()
+    private val aiCancelled = java.util.concurrent.atomic.AtomicBoolean(false)
+    private var aiJob: Job? = null
+
+    fun enhance4K() {
+        if (aiJob?.isActive == true || _aiResult.value != null) return
+        val source = _sourceBitmap.value ?: return
+        val state = _editState.value
+        aiCancelled.set(false)
+        _aiProgress.value = 0f
+        _aiStatus.value = "Rendering current edits…"
+        aiJob = viewModelScope.launch {
+            var before: Bitmap? = null
+            var result: Bitmap? = null
+            try {
+                before = withContext(Dispatchers.Default) {
+                    val factor = minOf(1.0, 960.0 / maxOf(source.width, source.height))
+                    val normalized = Bitmap.createScaledBitmap(source,
+                        (source.width * factor).toInt().coerceAtLeast(1),
+                        (source.height * factor).toInt().coerceAtLeast(1), true)
+                    try { ImageProcessor.process(normalized, state) }
+                    finally { if (normalized !== source) normalized.recycle() }
+                }
+                result = com.photoeditor.ai.OfflineUpscaler(getApplication()).enhance(requireNotNull(before), aiCancelled) { value, status ->
+                    _aiProgress.value = value
+                    _aiStatus.value = status
+                }
+                if (aiCancelled.get()) throw kotlinx.coroutines.CancellationException()
+                _aiBefore.value = before
+                _aiResult.value = result
+                before = null; result = null
+            } catch (_: kotlinx.coroutines.CancellationException) {
+                _aiStatus.value = "Cancelled"
+            } catch (_: OutOfMemoryError) {
+                _errorMessage.value = "Not enough memory for AI enhancement. Close other apps and try again."
+            } catch (failure: Throwable) {
+                _errorMessage.value = "AI enhancement failed: ${failure.message ?: "native engine unavailable"}. No resized substitute was produced."
+            } finally {
+                if (before !== source) before?.recycle()
+                result?.recycle()
+                _aiProgress.value = null
+            }
+        }
+    }
+
+    fun cancelEnhancement() {
+        aiCancelled.set(true)
+        _aiStatus.value = "Cancelling after the current tile…"
+    }
+
+    fun dismissAIResult() {
+        if (_aiExporting.value) return
+        // Compose may still be drawing the previous image this frame; let bitmap GC release it.
+        _aiBefore.value = null
+        _aiResult.value = null
+    }
+
+    fun exportAIResult() {
+        val result = _aiResult.value ?: return
+        if (_aiExporting.value) return
+        viewModelScope.launch {
+            _aiExporting.value = true
+            try {
+                val uri = repository.saveToGallery(result, "AZ_4K_${System.currentTimeMillis()}")
+                if (uri == null) _errorMessage.value = "Failed to export enhanced image. You can retry."
+                else { _aiStatus.value = "Saved to Pictures/PhotoEditor"; dismissAIResultAfterExport() }
+            } finally { _aiExporting.value = false }
+        }
+    }
+
+    private fun dismissAIResultAfterExport() { _aiBefore.value = null; _aiResult.value = null }
+    fun clearError() { _errorMessage.value = null }
+    override fun onCleared() { aiCancelled.set(true); super.onCleared() }
+
     private val repository = ImageRepository(application)
 
     private val _sourceBitmap = MutableStateFlow<Bitmap?>(null)
