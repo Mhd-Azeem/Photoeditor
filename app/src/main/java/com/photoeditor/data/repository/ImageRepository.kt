@@ -51,13 +51,18 @@ class ImageRepository(private val context: Context) {
         }
         val uri = context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
             ?: return null
-        context.contentResolver.openOutputStream(uri)?.use { stream ->
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 95, stream)
+        try {
+            val stream = context.contentResolver.openOutputStream(uri)
+                ?: throw IOException("Cannot open Gallery output")
+            stream.use { check(bitmap.compress(Bitmap.CompressFormat.JPEG, 95, it)) { "Image encoding failed" } }
+            values.clear()
+            values.put(MediaStore.Images.Media.IS_PENDING, 0)
+            check(context.contentResolver.update(uri, values, null, null) > 0) { "Gallery publish failed" }
+            return uri
+        } catch (failure: Exception) {
+            context.contentResolver.delete(uri, null, null)
+            throw failure
         }
-        values.clear()
-        values.put(MediaStore.Images.Media.IS_PENDING, 0)
-        context.contentResolver.update(uri, values, null, null)
-        return uri
     }
 
     @Suppress("DEPRECATION")

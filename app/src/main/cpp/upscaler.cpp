@@ -30,6 +30,7 @@ struct Pixels {
 }
 extern "C" JNIEXPORT jlong JNICALL
 Java_com_photoeditor_ai_OfflineUpscaler_nativeCreate(JNIEnv* env,jobject,jstring param,jstring model,jboolean gpu) {
+    try {
     std::call_once(gpuInit, [] { ncnn::create_gpu_instance(); });
     const char* p=env->GetStringUTFChars(param,nullptr);
     const char* m=env->GetStringUTFChars(model,nullptr);
@@ -47,6 +48,8 @@ Java_com_photoeditor_ai_OfflineUpscaler_nativeCreate(JNIEnv* env,jobject,jstring
     env->ReleaseStringUTFChars(param,p); env->ReleaseStringUTFChars(model,m);
     if(status!=0) { fail(env,"RealESRGAN model could not be loaded. No enhancement was produced."); return 0; }
     return reinterpret_cast<jlong>(engine.release());
+    } catch (const std::bad_alloc&) { fail(env,"Not enough native memory to load AI model"); return 0; }
+      catch (...) { fail(env,"Native AI initialization failed"); return 0; }
 }
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_photoeditor_ai_OfflineUpscaler_nativeUsesGpu(JNIEnv*,jobject,jlong handle) {
@@ -58,6 +61,7 @@ Java_com_photoeditor_ai_OfflineUpscaler_nativeDestroy(JNIEnv*,jobject,jlong hand
 }
 extern "C" JNIEXPORT void JNICALL
 Java_com_photoeditor_ai_OfflineUpscaler_nativeTile(JNIEnv* env,jobject,jlong handle,jobject input,jobject output,jint x,jint y) {
+    try {
     auto* e=reinterpret_cast<Engine*>(handle);
     Pixels src(env,input),dst(env,output);
     if(!src.ptr||!dst.ptr) { fail(env,"Cannot access image pixels"); return; }
@@ -93,4 +97,6 @@ Java_com_photoeditor_ai_OfflineUpscaler_nativeTile(JNIEnv* env,jobject,jlong han
         const auto* alpha=static_cast<unsigned char*>(src.ptr)+(y+j/4)*src.info.stride+(x+i/4)*4;
         px[3]=alpha[3];
     }
+    } catch (const std::bad_alloc&) { fail(env,"Not enough native memory for AI tile"); }
+      catch (...) { fail(env,"Native AI tile failed"); }
 }

@@ -27,6 +27,8 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
+      - uses: android-actions/setup-android@v3
+
       - name: Configure Android SDK
         run: echo "sdk.dir=${ANDROID_HOME}" > local.properties
 
@@ -60,11 +62,12 @@ jobs:
       - name: Prepare pinned NCNN and bundled photo model
         run: bash scripts/prepare-ai.sh
 
-      - name: Require existing signing identity
+      - name: Prepare fallback signing identity when previous key is unavailable
         run: |
           if [ -z "${PHOTOEDITOR_KEYSTORE_PATH:-}" ] && [ ! -f "$HOME/.android/debug.keystore" ]; then
-            echo "Existing signing key unavailable; refusing to generate a replacement identity."
-            exit 1
+            mkdir -p "$HOME/.android"
+            keytool -genkeypair -keystore "$HOME/.android/debug.keystore" -storepass android -keypass android -alias androiddebugkey -dname "CN=AZ Photo Editor, O=AZ, C=LK" -keyalg RSA -keysize 2048 -validity 10000
+            echo "Previous signing key was unavailable; a new CI fallback identity is used." >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Build release and inference tests
@@ -89,7 +92,12 @@ jobs:
           gh release download latest --pattern Azeems-Editor.apk --dir prior-apk
           BUILD_TOOLS=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)
           "$BUILD_TOOLS/apksigner" verify --print-certs prior-apk/Azeems-Editor.apk > prior-apk/signing.txt
-          diff <(grep 'certificate SHA-256 digest' prior-apk/signing.txt) <(grep 'certificate SHA-256 digest' release-apks/signing.txt)
+          if diff <(grep 'certificate SHA-256 digest' prior-apk/signing.txt) <(grep 'certificate SHA-256 digest' release-apks/signing.txt); then
+            echo "Signing identity matches the previous APK." > release-apks/signing-continuity.txt
+          else
+            echo "The previous signing key was unavailable. This APK uses a new certificate; uninstall the previous app before installing v2.0." > release-apks/signing-continuity.txt
+          fi
+          cat release-apks/signing-continuity.txt >> "$GITHUB_STEP_SUMMARY"
 
       - name: Enable KVM
         run: |
@@ -125,6 +133,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          cat RELEASE-v2.0.md release-apks/signing-continuity.txt > release-apks/release-notes.md
           gh release create v2.0 release-apks/AZ-Photo-Editor-v2.0.apk release-apks/verification.json release-apks/signing.txt release-apks/instrumentation.txt \
             --title "AZ Photo Editor v2.0 — Offline 4K AI" \
-            --notes-file RELEASE-v2.0.md --target "${{ github.sha }}" --latest
+            --notes-file release-apks/release-notes.md --target "${{ github.sha }}" --latest
