@@ -51,7 +51,13 @@ fun EditScreen(
     viewModel: EditViewModel,
     onDismiss: () -> Unit
 ) {
+    val view = androidx.compose.ui.platform.LocalView.current
     val aiProgress by viewModel.aiProgress.collectAsState()
+    androidx.compose.runtime.DisposableEffect(aiProgress != null) {
+        val wasKeepingScreenOn = view.keepScreenOn
+        if (aiProgress != null) view.keepScreenOn = true
+        onDispose { view.keepScreenOn = wasKeepingScreenOn }
+    }
     val aiStatus by viewModel.aiStatus.collectAsState()
     val aiBefore by viewModel.aiBefore.collectAsState()
     val aiResult by viewModel.aiResult.collectAsState()

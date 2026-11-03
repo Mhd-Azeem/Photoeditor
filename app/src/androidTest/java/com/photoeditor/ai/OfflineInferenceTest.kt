@@ -23,23 +23,24 @@ class OfflineInferenceTest {
         val model = File(context.cacheDir, "test.bin")
         context.assets.open("models/realesrgan-x4plus.param").use { input -> param.outputStream().use { input.copyTo(it) } }
         context.assets.open("models/realesrgan-x4plus.bin").use { input -> model.outputStream().use { input.copyTo(it) } }
-        val createTypes = arrayOf(String::class.java, String::class.java, java.lang.Boolean.TYPE)
+        val createTypes: Array<Class<*>> = arrayOf(String::class.java, String::class.java, java.lang.Boolean.TYPE)
         val handle = invoke("nativeCreate", createTypes, param.path, model.path, false) as Long
         assertTrue(handle != 0L)
-        val input = Bitmap.createBitmap(17, 13, Bitmap.Config.ARGB_8888)
-        for (y in 0 until 13) for (x in 0 until 17) input.setPixel(x, y, Color.rgb((x*31+y*13)%256, (x*11+y*23)%256, (x*19+y*7)%256))
-        val output = Bitmap.createBitmap(68, 52, Bitmap.Config.ARGB_8888)
+        val input = Bitmap.createBitmap(65, 13, Bitmap.Config.ARGB_8888)
+        for (y in 0 until 13) for (x in 0 until 65) input.setPixel(x, y, Color.rgb((x*31+y*13)%256, (x*11+y*23)%256, (x*19+y*7)%256))
+        val output = Bitmap.createBitmap(260, 52, Bitmap.Config.ARGB_8888)
         try {
             assertEquals(false, invoke("nativeUsesGpu", arrayOf(java.lang.Long.TYPE), handle))
             invoke("nativeTile", arrayOf(java.lang.Long.TYPE, Bitmap::class.java, Bitmap::class.java, Integer.TYPE, Integer.TYPE), handle, input, output, 0, 0)
-            val resized = Bitmap.createScaledBitmap(input, 68, 52, true)
+            invoke("nativeTile", arrayOf(java.lang.Long.TYPE, Bitmap::class.java, Bitmap::class.java, Integer.TYPE, Integer.TYPE), handle, input, output, 64, 0)
+            val resized = Bitmap.createScaledBitmap(input, 260, 52, true)
             var difference = 0L
-            for (y in 0 until 52) for (x in 0 until 68) {
+            for (y in 0 until 52) for (x in 0 until 260) {
                 val actual = output.getPixel(x, y)
                 assertEquals(255, Color.alpha(actual))
                 difference += kotlin.math.abs(Color.red(actual)-Color.red(resized.getPixel(x,y)))
             }
-            assertTrue("Inference must differ from ordinary resizing", difference > 68*52)
+            assertTrue("Inference must differ from ordinary resizing", difference > 260*52)
             resized.recycle()
         } finally {
             invoke("nativeDestroy", arrayOf(java.lang.Long.TYPE), handle)
